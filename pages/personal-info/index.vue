@@ -36,18 +36,19 @@
 							<view slot="value">学校111</view>
 						</u-cell>
 					</u-cell-group>
-					<!-- <u-form-item label="性别" borderBottom><u--input v-model="form.account" disabled disabledColor="#fff" border="none"></u--input></u-form-item>
-					<u-form-item label="角色" borderBottom><u--input v-model="form.realName" border="none"></u--input></u-form-item>
-					<u-form-item label="手机号" borderBottom><u--input v-model="form.mobilePhone" type="number" border="none"></u--input></u-form-item>
-					<u-form-item label="邮箱" borderBottom><u--input v-model="form.email" border="none"></u--input></u-form-item>
-					<u-form-item label="教师资格证"><u--input v-model="form.email" border="none"></u--input></u-form-item> -->
 				</view>
 			</u--form>
+			
+			
 		</view>
 
+		<view class="personal-info__foot"><u-button type="primary" shape="circle" color="#ff0000" text="登出" @click="show = true"></u-button></view>
 		
 		<!-- 消息提示 -->
 		<u-toast ref="uToast"></u-toast>
+		
+		<!-- 模态框 -->
+		<sk-modal :show.sync="show" title="温馨提示" content="确定要退出登录吗？" @confirm="layout"></sk-modal>
 	</view>
 </template>
 
@@ -72,6 +73,7 @@ export default {
 			avatarUrl: '',
 			avatarName: '',
 			asyncRouteMap,
+			show: false,
 		};
 	},
 	components: { UploadAvatar },
@@ -93,37 +95,11 @@ export default {
 				console.error('获取用户信息', e);
 			}
 		},
-		handleUpload({ fileList }) {
-			// 上传头像
-			this.avatarUrl = fileList.length > 0 ? fileList[0].url : '';
-			this.avatarName = this.avatarName = this.createAvatarName(this.avatarUrl);
-			// 更新头像
-			if (this.avatarName) {
-				apiServer.updateUserAvatar(this.avatarName).then(response => {
-					if (response.code === 200) {
-						// this.$refs.uToast.success('头像更新更新成功');
-					}
-				});
-			}
-		},
-		async handleSubmit() {
-			// 更新信息
-			apiServer.updateUserInfo(this.form).then(response => {
-				if (response.code === 200) {
-					this.$refs.uToast.success('个人信息更新成功');
-					this.$store.dispatch('login/GetUserInfo').then(() => {
-						this.getUserInfo();
-						uni.navigateBack();
-					});
-				}
-			});
-		},
-		createAvatarName(avatarUrl) {
-			// 获取头像名称
-			if (!avatarUrl) return '';
-			const array = avatarUrl.split('/');
-			return array.pop();
+		layout() {
+			// 退出登录
+			this.$store.dispatch('login/Logout');
 		}
+	
 	}
 };
 </script>
@@ -161,7 +137,7 @@ export default {
 	}
 
 	&__foot {
-		padding: 100rpx 30rpx 0;
+		padding: 52px 15px 0;
 	}
 }
 </style>
