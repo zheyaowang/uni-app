@@ -1,0 +1,77 @@
+{
+	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
+		{
+			"path": "pages/login/index",
+			"style": {
+				"navigationBarTitleText": "登录"
+			}
+		}
+        ,{
+            "path" : "pages/home/home",
+            "style" :                                                                                    
+            {
+                "navigationBarTitleText": "首页",
+                "enablePullDownRefresh": false
+            }
+            
+        }
+    
+        ,{
+            "path" : "pages/personal-info/index",
+            "style" :                                                                                    
+            {
+                "navigationBarTitleText": "个人中心",
+                "enablePullDownRefresh": false
+            }
+            
+        }
+        ,{
+            "path" : "pages/personal-info/components/my-school/my-school",
+            "style" :                                                                                    
+            {
+                "navigationBarTitleText": "我的学校",
+                "enablePullDownRefresh": false
+            }
+            
+        }
+        ,{
+            "path" : "pages/study/study",
+            "style" :                                                                                    
+            {
+                "navigationBarTitleText": "",
+                "enablePullDownRefresh": false
+            }
+            
+        }
+        ,{
+            "path" : "pages/study/components/student/student",
+            "style" :                                                                                    
+            {
+                "navigationBarTitleText": "选择学生",
+                "enablePullDownRefresh": false
+            }
+            
+        }
+        ,{
+            "path" : "pages/study/components/student-detail/student-detail",
+            "style" :                                                                                    
+            {
+                "navigationBarTitleText": "学生追踪",
+                "enablePullDownRefresh": false
+            }
+            
+        }
+    ],
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "教育项目",
+		"navigationBarBackgroundColor": "#000000",
+		"backgroundColor": "#ffffff",
+		"navigationStyle": "custom" // 自定义导航栏
+	},
+	"uniIdRouter": {},
+	"easycom": {
+		"^u-(.*)": "@/uni_modules/uview-ui/components/u-$1/u-$1.vue",
+		"^sk-(.*)": "@/components/global/sk-$1/index.vue"
+	}
+}

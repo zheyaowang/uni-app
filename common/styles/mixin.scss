@@ -1,0 +1,9 @@
+/* #ifndef APP-NVUE */
+// flex横纵向布局
+@mixin flex($direction: row) {
+	/* #ifndef APP-NVUE */
+	display: flex;
+	/* #endif */ 
+	flex-direction: $direction;
+}
+/* #endif */

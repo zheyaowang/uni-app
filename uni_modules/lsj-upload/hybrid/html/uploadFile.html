@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+
+	<head>
+		<meta charset="UTF-8">
+		<title class="title">[文件管理器]</title>
+		<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+		<style type="text/css">
+			.content {background: transparent;}
+			.btn {position: relative;top: 0;left: 0;bottom: 0;right: 0;}
+			.btn .file {position: fixed;z-index: 2;left: 0;right: 0;top: 0;bottom: 0;width: 100%;opacity: 0;}
+		</style>
+	</head>
+
+	<body>
+		
+		<div id="content" class="content">
+			<div class="btn">
+				<input :multiple="multiple" @change="onChange" :accept="accept" ref="file" class="file" type="file" />
+			</div>
+		</div>
+		
+		<script type="text/javascript" src="js/vue.min.js"></script>
+		<script type="text/javascript">
+			let _this;
+			const SIZE = 1024 * 1024; // 切片大小（1MB）
+			
+			var vm = new Vue({
+				el: '#content',
+				data: {
+					accept: '',
+					multiple: true,
+					// 存放文件信息 2023-05-22 by xzh
+					container: {
+					  file: null,
+					  hash: null,
+					},
+					data: [], // 用于存放加工好的文件切片列表
+					hashPercentage: 0 // 存放hash生成进度
+				},
+				mounted() {
+					// console.log('加载webview');
+					_this = this;
+					this.files = new Map();
+					document.addEventListener('plusready', (e)=>{
+					let {debug,instantly,prohibited} = plus.webview.currentWebview();
+					this.debug = debug;
+					this.instantly = instantly;
+					this.prohibited = prohibited;
+					this.accept = prohibited.accept; 
+					this.multiple = prohibited.count > 1;
+					location.href = 'callback?retype=updateOption';
+					}, false);
+				},
+				methods: {
+					toast(msg) {
+						plus.nativeUI.toast(msg);
+					},
+					clear(name) {
+						if (!name) {
+							this.files.clear();
+							return;
+						}
+						this.files.delete(name);
+					},
+					setData(option='{}') {
+						this.debug&&console.log('更新参数：'+option);
+						try{
+							_this.option = JSON.parse(option);
+						}catch(e){
+							console.error('参数设置错误')
+						}
+					},
+					async upload(name=''){
+						if (name && this.files.has(name)) {
+							await this.createUpload(this.files.get(name));
+						}
+						else {
+							for (let item of this.files.values()) {
+								if (item.type === 'waiting' || item.type === 'fail') {
+									await this.createUpload(item);
+								}
+							}
+						}
+					},
+					onChange(e) {
+						let fileDom = this.$refs.file;
+						for (let file of fileDom.files) {
+							if (this.files.size >= this.prohibited.count) {
+								this.toast(`只允许上传${this.prohibited.count}个文件`);
+								fileDom.value = '';
+								break;
+							}
+							console.log('file', file);
+							this.addFile(file);
+						}
+						this.uploadAfter();
+						fileDom.value = '';
+					},
+					addFile(file) {
+						if (file) {
+							
+							let name = file.name;
+							this.debug&&console.log('文件名称',name,'大小',file.size, '格式', file.type);
+							// 限制文件格式
+							let suffix = name.substring(name.lastIndexOf(".")+1).toLowerCase(); 
+							let formats = this.prohibited.formats.toLowerCase();
+							if (formats&&!formats.includes(suffix)) {
+								this.toast(`不支持上传${suffix.toUpperCase()}格式文件`);
+								return false
+							}
+							// 限制文件大小
+							if (file.size > 1024 * 1024 * Math.abs(this.prohibited.size)) {
+								this.toast(`附件大小请勿超过${this.prohibited.size}M`)
+								return;
+							}
+							// let itemBlob = new Blob([file]);
+							let path = URL.createObjectURL(file);
+							this.files.set(file.name,{file ,path, name: file.name,size: file.size,progress: 0,type: 'waiting', fileType: file.type});
+						}
+					},
+					/**
+					 * @returns {Map} 已选择的文件Map集
+					 */
+					callChange() {
+						location.href = 'callback?retype=change&files=' + escape(JSON.stringify([...this.files]));
+					},
+					/**
+					 * @returns promise result
+					 */
+					callMerged(res) {
+						location.href = 'callback?retype=cb&item=' + escape(JSON.stringify(res));
+					},
+					/**
+					 * @returns {object} 正在处理的当前对象
+					 */
+					changeFilesItem(item,end='') {
+						this.files.set(item.name,item);
+						location.href = 'callback?retype=progress&end='+ end +'&item=' + escape(JSON.stringify(item));
+					},
+					uploadAfter() {
+						this.callChange();
+						setTimeout(()=>{
+							this.instantly && this.upload();
+						}, 1000)
+					},
+					createUpload(item) {
+						// this.debug&&console.log('准备上传,option=：'+JSON.stringify(this.option));
+						// console.log('item111', JSON.stringify(item));
+						item.type = 'loading';
+						delete item.responseText;
+						
+						// xzh
+						const identifier = this.guid() // 标识
+						const fileChunks = this.createFileChunk(item.file) // 切片，正确的做法应该是再fileChunks.map添加切片的hash用作断点续传和秒传那些
+						console.log('fileChunks', fileChunks)
+						let times = 0
+						const tasks = fileChunks.map((chunk, index) => {
+							return new Promise(async (resolve,reject)=>{
+								let {url, name, method='POST', header={},formData={ }} = this.option;
+								
+								for (let keys in formData) {
+									form.append(keys, formData[keys])
+								}
+								
+								let form = new FormData();
+								form.append("name", 'file');
+								form.append("chunkSize", SIZE); // 152428800
+								form.append('chunkNumber', (index + 1)); // 当前切片的索引，从0开始
+								form.append('currentChunkSize', chunk.size) // 当前切片大小
+								form.append("totalSize", item.size); // 文件总大小
+								form.append("identifier", identifier); // 切片标识
+								form.append("filename", item.name); // 文件名
+								form.append("relativePath", item.name); // 文件名
+								form.append("totalChunks", fileChunks.length); // 切片总次数
+								form.append("fileType", item.fileType); // 文件类型
+								form.append("extension", item.fileType.split('/')[1]); // 扩展名（后缀）
+								form.append("file", chunk); // 
+								if(index === 0) {
+									await this.handshake(form)
+								}
+								let xmlRequest = new XMLHttpRequest();
+								xmlRequest.open(method, url, true);
+								for (let keys in header) {
+									xmlRequest.setRequestHeader(keys, header[keys])
+								}
+								xmlRequest.upload.addEventListener(
+									'progress',
+									event => {
+										
+										if (event.lengthComputable) {
+											let progress = Math.ceil((event.loaded * 100) / event.total)
+											if (progress <= 100) {
+												item.progress = progress;
+												// this.changeFilesItem({ ...item, totalChunks: fileChunks.length, chunkNumber: (index + 1) });
+											}
+										}
+									},
+									false
+								);
+							
+								xmlRequest.ontimeout = () => {
+									console.error('请求超时')
+									item.type = 'fail';
+									this.changeFilesItem(item,true);
+									return resolve(false);
+								}
+								
+								xmlRequest.onreadystatechange = ev => {
+									times ++
+									console.log('times', times);
+									if (xmlRequest.readyState === 4) {
+										this.debug && console.log('接口是否支持跨域',xmlRequest.withCredentials); 
+										if (xmlRequest.status == 200) {
+											this.debug && console.log('上传完成：' + xmlRequest.responseText)
+											item['responseText'] = xmlRequest.responseText;
+											item.type = 'success';
+											this.changeFilesItem({ ...item, totalChunks: fileChunks.length, chunkNumber: times }, true);
+											return resolve(xmlRequest.responseText);
+										} else if (xmlRequest.status == 0) {
+											console.error('status = 0 :请检查请求头Content-Type与服务端是否匹配，服务端已正确开启跨域，并且nginx未拦截阻止请求')
+										}
+										console.error('--ERROR--：status = ' + xmlRequest.status) 
+										item.type = 'fail';
+										this.changeFilesItem(item, true);
+										return resolve(false);
+									}
+								}
+								// console.log('form',(form));
+								await xmlRequest.send(form)
+							}); 
+						})
+						// console.log('tasks0000', tasks)
+						let a  = 0
+						Promise.all(tasks).then(res => {
+							console.log('Promise.all--success', a += 1);
+							// 切片全部上传完成后执行
+							this.mergeChunk(item, identifier)
+						}).catch(errors => {
+							console.log('Promise.all--error', errors);
+						})
+						
+						
+					},
+					// 切片上传需要进行握手操作
+					async handshake(form) {
+						
+						let { url, name, method='GET', header={}, formData={} } = this.option;
+						const chunkNumber = form.get('chunkNumber')
+						const chunkSize = form.get('chunkSize')
+						const currentChunkSize = form.get('currentChunkSize')
+						const totalSize = form.get('totalSize')
+						const identifier = form.get('identifier')
+						const filename = form.get('filename')
+						const relativePath = form.get('relativePath')
+						const totalChunks = form.get('totalChunks')
+						const fileType = form.get('fileType')
+						const extension = form.get('extension')
+						
+						console.log('form----handshake---totalSize', totalSize);
+						let xmlRequest = new XMLHttpRequest();
+						xmlRequest.open(method, `${url}?chunkNumber=${chunkNumber}&chunkSize=${chunkSize}&currentChunkSize=${currentChunkSize}&totalSize=${totalSize}&identifier=${identifier}&filename=${filename}&relativePath=${relativePath}&totalChunks=${totalChunks}&fileType=${fileType}&extension=${extension}`, true);
+						xmlRequest.onreadystatechange = ev => {
+							if (xmlRequest.readyState == 4) {
+								this.debug && console.log('接口是否支持跨域',xmlRequest.withCredentials); 
+							}
+						}
+						await xmlRequest.send();
+					},
+					// 合并切片请求
+					async mergeChunk(item, identifier) {
+						const { mergeUrl, method='POST' } = this.option
+						let form = new FormData();
+						form.append('identifier', identifier)
+						form.append('fileName', item.filename)
+						form.append('fileSize', item.size)
+						form.append('fileType', item.fileType.split('/')[1])
+						form.append('extension', item.fileType.split('/')[1])
+						form.append('type', 'annex')
+					
+						let xmlRequest = new XMLHttpRequest();
+						xmlRequest.open(method, mergeUrl, true);
+						xmlRequest.onreadystatechange = async (ev) => {
+							if (xmlRequest.readyState == 4) {
+								this.debug && console.log('接口是否支持跨域',xmlRequest.withCredentials); 
+								console.log('xmlRequest.responseText', xmlRequest.responseText)
+								await this.callMerged(xmlRequest.responseText)
+							}
+							
+						}
+						await xmlRequest.send(form);
+					
+					},
+					// 生成文件切片
+					createFileChunk(file, size = SIZE) {
+					 const fileChunkList = [];
+					  let cur = 0;
+					  while (cur < file.size) {
+					    // fileChunkList.push({ file: file.slice(cur, cur + size) });
+						fileChunkList.push(file.slice(cur, cur + size)); // 直接这样搞了
+					    cur += size;
+					  }
+					  return fileChunkList;
+					},
+					// 生成唯一标识符号(uuid)
+					guid() {
+						return 'xxxxxxxx-date-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+							var r = Math.random() * 16 | 0,
+								v = c == 'x' ? r : (r & 0x3 | 0x8);
+							return v.toString(16);
+						}).replace(/date/g, function(c) {
+							return Date.parse(new Date());
+						});
+					},
+				}
+			});
+			
+		</script>
+	</body>
+
+</html>

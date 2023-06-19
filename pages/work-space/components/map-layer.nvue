@@ -1,0 +1,157 @@
+<template>
+	<u-popup :show="show" mode="right" bgColor="transparent" closeOnClickOverlay safeAreaInsetTop @close="show = false">
+		<view :style="{ height: iStatusBarHeight + 'px' }"></view>
+		<view class="map-layer bg-white">
+			<view class="map-layer__head">
+				<view class="layer-title"><u--text color="#222" customStyle="fontSize: 25rpx" text="主题"></u--text></view>
+
+				<view class="layer-content">
+					<view class="item-layer" v-for="(item, index) in mapThemeOptions" :key="index" @tap="handleClickTheme(item)">
+						<u--image width="140rpx" height="108rpx" :src="item.img" @click="handleClickTheme(item)"></u--image>
+						<u--text color="#333" align="center" margin="20rpx 0" customStyle="fontSize: 26rpx" :text="item.title"></u--text>
+						<u--image class="theme-active" v-if="currentTheme === item.name" width="140rpx" height="108rpx" src="/static/img/work-space/theme_active.png"></u--image>
+					</view>
+				</view>
+			</view>
+			<view class="map-layer__content">
+				<view class="layer-title"><u--text color="#222" customStyle="fontSize: 25rpx" text="图层"></u--text></view>
+				<list class="layer-content">
+					<cell>
+						<view class="item-layer" scrollable v-for="(item, index) in mapLayerOptions" :key="index" @tap="handleClickLayer(item)">
+							<u--image :width="item.witdh" :height="item.height" :src="item.img"></u--image>
+							<view class="item-layer__content">
+								<u--text color="#333" margin="0 26rpx" customStyle="fontSize: 26rpx" :text="item.title"></u--text>
+								<u--image
+									width="20rpx"
+									height="20rpx"
+									:src="`/static/img/work-space/${currentLayer.includes(item.name) ? 'radio_active' : 'radio_inactive'}.png`"
+								></u--image>
+							</view>
+						</view>
+					</cell>
+				</list>
+			</view>
+		</view>
+		<div class="safe-bottom"></div>
+	</u-popup>
+</template>
+
+<script>
+import { mapThemeOptions, mapLayerOptions } from '../data.js';
+export default {
+	name: 'map-layer',
+	data() {
+		return {
+			show: false,
+			iStatusBarHeight: 0,
+			mapThemeOptions,
+			mapLayerOptions,
+			currentTheme: 'default',
+			currentLayer: []
+		};
+	},
+	created() {
+		// console.log(uni.getSystemInfoSync());
+		let iStatusBarHeight = uni.getSystemInfoSync().statusBarHeight;
+		// #ifdef H5
+		iStatusBarHeight = iStatusBarHeight + 45;
+		// #endif
+		// #ifdef APP-PLUS
+		iStatusBarHeight = iStatusBarHeight + 15;
+		// #endif
+		this.iStatusBarHeight = iStatusBarHeight;
+
+		// 默认全选图层
+		this.currentLayer = mapLayerOptions.map(v => v.name);
+	},
+	methods: {
+		handleClickTheme(item) {
+			// 主题切换
+			this.currentTheme = item.name;
+			this.$parent.enableSatellite = item.name === 'enableSatellite';
+			this.$parent.enableBuilding = item.name === 'enableBuilding';
+			this.show = false;
+		},
+		handleClickLayer(item) {
+			// 图层筛选
+			const isTure = this.currentLayer.includes(item.name);
+			if (isTure) this.currentLayer = this.currentLayer.filter(v => v !== item.name);
+			else this.currentLayer.push(item.name);
+			this.$parent.handleChangeLayer('currentLayer', this.currentLayer, 'monitorList');
+		}
+	}
+};
+</script>
+
+<style lang="scss" scoped>
+.u-popup {
+	/* #ifdef H5 */
+	/deep/ .u-popup__content {
+		height: 0;
+	}
+	/* #endif */
+
+	.map-layer {
+		flex: 1;
+		height: 0;
+		width: 550rpx;
+		background-color: #f5f5f5;
+
+		.layer-title {
+			height: 97rpx;
+			line-height: 97rpx;
+			padding-left: 20rpx;
+		}
+
+		&__head {
+			.layer-content {
+				height: 231rpx;
+				background-color: #fff;
+				flex-direction: row;
+				align-items: center;
+				justify-content: space-around;
+
+				.item-layer {
+					position: relative;
+
+					.theme-active {
+						position: absolute;
+						top: 0;
+						left: 0;
+					}
+				}
+			}
+		}
+
+		&__content {
+			flex: 1;
+			height: 0;
+			.layer-content {
+				flex: 1;
+				height: 0;
+				background-color: #fff;
+
+				.item-layer {
+					display: flex;
+					flex-direction: row;
+					align-items: center;
+					padding: 0 30rpx 0 20rpx;
+
+					&__content {
+						flex: 1;
+						height: 99rpx;
+						flex-direction: row;
+						align-items: center;
+						border-bottom: 1px solid #f5f5f5;
+					}
+				}
+			}
+		}
+	}
+	/* #ifdef APP-PLUS */
+	.safe-bottom {
+		height: calc(50px + env(safe-area-inset-bottom));
+	}
+	/* #endif */
+}
+</style>

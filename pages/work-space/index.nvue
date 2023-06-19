@@ -1,0 +1,389 @@
+<template>
+	<view class="work-space">
+		<sk-navbar title="水稻田精准灌溉" :auto-back="false" left-icon="scan" right-icon="search" @leftClick="scanCode" @rightClick="search"></sk-navbar>
+
+		<map
+			id="gisMap"
+			ref="gisMap"
+			class="gao-de-map"
+			show-location
+			show-compass
+			enable-zoom
+			enable-scroll
+			enable-rotate
+			:enable-satellite="enableSatellite"
+			:enable-building="enableBuilding"
+			show-scale
+			:scale="scale"
+			:longitude="longitude"
+			:latitude="latitude"
+			:markers="markers"
+			@markertap="handleMap"
+			@callouttap="handleMap"
+			@tap="showSwiperDetail = false"
+		>
+			<!-- 右侧操作列表 -->
+			<view class="tool-bar" @tap.stop>
+				<view class="tool-bar-base">
+					<view class="base" @tap="handleClickLayerEquiment('monitorList', false)">
+						<u--image width="26rpx" height="21rpx" :src="`/static/img/work-space/${activeMap === 'monitorList' ? 'tuceng2' : 'tuceng'}.png`"></u--image>
+						<u--text :color="activeMap === 'monitorList' ? '#1890FF' : '#333'" align="center" margin="10rpx 0 0" customStyle="fontSize: 20rpx" text="图层"></u--text>
+					</view>
+					<u-line margin="10rpx 0"></u-line>
+					<view class="base" @tap="handleClickLayerEquiment('equimentList', false)">
+						<u--image
+							width="23rpx"
+							height="30rpx"
+							:src="`/static/img/work-space/${activeMap === 'equimentList' && !isControl ? 'gongkuang2' : 'gongkuang'}.png`"
+						></u--image>
+						<u--text
+							:color="activeMap === 'equimentList' && !isControl ? '#1890FF' : '#333'"
+							align="center"
+							margin="8rpx 0 0"
+							customStyle="fontSize: 20rpx"
+							text="工况"
+						></u--text>
+					</view>
+					<u-line margin="10rpx 0"></u-line>
+					<view class="base" @tap="handleClickLayerEquiment('equimentList', true)">
+						<u--image width="30rpx" height="30rpx" :src="`/static/img/work-space/${isControl ? 'yuankong2' : 'yuankong'}.png`"></u--image>
+						<u--text :color="isControl ? '#1890FF' : '#333'" align="center" margin="8rpx 0 0" customStyle="fontSize: 20rpx" text="远控"></u--text>
+					</view>
+					<u-line margin="10rpx 0"></u-line>
+					<view class="base" @tap="position">
+						<u-icon v-if="!showLoading" name="/static/img/work-space/dingwei.png" color="#3c9cff" size="30rpx"></u-icon>
+						<u-loading-icon mode="circle" size="20" :show="showLoading"></u-loading-icon>
+						<u--text color="#3A466D" align="center" margin="8rpx 0 0" customStyle="fontSize: 20rpx;" text="定位"></u--text>
+					</view>
+				</view>
+				<view class="tool-bar-data">
+					<view class="base" @tap="goToPages('list')">
+						<u--image width="30rpx" height="23rpx" src="/static/img/work-space/liebiao.png"></u--image>
+						<u--text color="#333" align="center" margin="8rpx 0 0" customStyle="fontSize: 20rpx" text="列表"></u--text>
+					</view>
+					<u-line margin="10rpx 0"></u-line>
+					<view class="base" @tap="goToPages('notification-message')">
+						<u--image width="29rpx" height="32rpx" src="/static/img/work-space/xiaoxi.png"></u--image>
+						<u--text color="#333" align="center" margin="5rpx 0 0" customStyle="fontSize: 20rpx" text="消息"></u--text>
+					</view>
+				</view>
+			</view>
+
+			<!-- 左侧工况图层 -->
+			<view class="equiment-content" v-if="activeMap === 'equimentList'">
+				<view class="equiment-item" v-for="(item, index) in mapEquimentOptions" :key="item.name" @tap.stop="handleChangeEquiment(item)">
+					<u--image width="31rpx" height="38rpx" :src="`${currentEquiment.includes(item.name) ? item.icon : item.img}`"></u--image>
+					<u--text
+						:color="`${currentEquiment.includes(item.name) ? '#1890FF' : '#333'}`"
+						align="center"
+						margin="5rpx 0"
+						customStyle="fontSize: 20rpx"
+						:text="item.title"
+					></u--text>
+					<u-line length="60rpx" v-if="index < mapEquimentOptions.length - 1" margin="10rpx 0"></u-line>
+				</view>
+			</view>
+
+			<!-- 图层弹窗 -->
+			<map-layer ref="mapLayer"></map-layer>
+			<!-- 滚动信息列表 -->
+			<map-swiper-detail v-if="showSwiperDetail" ref="mapSwiperDetailRef" :markers="markers" :is-control="isControl" :currentId="currentMarkerId"></map-swiper-detail>
+
+			<!-- 消息提示 -->
+			<u-toast ref="uToast"></u-toast>
+		</map>
+	</view>
+</template>
+
+<script>
+import { mapGetters } from 'vuex';
+import mapLayer from './components/map-layer.nvue';
+import mapSwiperDetail from './components/map-swiper-detail.nvue';
+import { asyncRouteMap } from '@/common/router/modules/routers.js';
+import { mapEquimentOptions, mapLayerOptions, searchResultOption } from './data.js';
+import GaoDeJs from './gaoDe.js';
+const gaoDeJs = new GaoDeJs();
+export default {
+	name: 'work-space',
+	data() {
+		return {
+			scale: 10,
+			latitude: null,
+			longitude: null,
+			currentMarkerId: '',
+			markers: [],
+			currentLayer: [],
+			currentEquiment: [],
+			activeMap: 'monitorList',
+			isControl: false,
+			showLoading: false,
+			enableSatellite: false, // 是否开启卫星图
+			enableBuilding: false, // 3D
+			showSwiperDetail: false,
+			mapEquimentOptions,
+			showMask: false
+		};
+	},
+	mixins: [uni.$u.mpMixin, uni.$u.mixin],
+	components: { mapLayer, mapSwiperDetail },
+	computed: mapGetters('workSpace', ['monitorList', 'equimentList']),
+	watch: {
+		monitorList: {
+			handler() {
+				// 默认展示图层聚合
+				if (this.monitorList.length > 0) {
+					this.initMapContext();
+					this.markers = this.monitorList;
+					const { longitude, latitude } = this.markers[0];
+					this.longitude = longitude;
+					this.latitude = latitude;
+				}
+			},
+			deep: true
+		}
+	},
+	mounted() {
+		// 默认展示监测图层
+		this.currentLayer = mapLayerOptions.map(v => v.name);
+		// 默认展示工况图层
+		this.currentEquiment = mapEquimentOptions.map(v => v.name);
+		// 创建并返回 map 上下文 mapContext 对象
+		this._mapContext = uni.createMapContext('gisMap', this);
+		// 获取监测点列表和获取工况列表
+		// this.getMapMarkerList();
+	},
+	beforeDestroy() {
+		this._mapContext = null;
+	},
+	methods: {
+		scanCode() {
+			// 允许从相机和相册扫码
+			uni.scanCode({
+				success: res => {
+					console.log('条码类型：' + res.scanType);
+					console.log('条码内容：' + res.result);
+					this.$refs.uToast.show({
+						type: 'default',
+						message: '功能暂未开放'
+					});
+				}
+			});
+		},
+		search() {
+			// 跳转,搜索定位
+			uni.navigateTo({
+				url: asyncRouteMap['form-map-search'],
+				events: {
+					'on-search': item => {
+						const { type } = searchResultOption.find(v => v.name === item.type);
+						this.handleClickLayerEquiment(type, false, false).then(() => {
+							const marker = this.markers.find(v => v.attrbuites.id === item.id);
+							this.longitude = Number(marker.longitude);
+							this.latitude = Number(marker.latitude);
+							setTimeout(() => {
+								this.handleMap({
+									detail: {
+										markerId: marker.clusterId
+									}
+								});
+							}, 200)
+						});
+						
+					}
+				}
+			});
+		},
+		getMapMarkerList() {
+			// 在路由守卫中进行获取数据
+			// 以下获取方式放弃
+			// // 获取监测点列表
+			// this.$store.dispatch('workSpace/GetMapMonitorMarkerList');
+			// // 获取工况列表 工况和远控是相同设备
+			// this.$store.dispatch('workSpace/GetMapEquimentMarkerList');
+		},
+		handleClickLayerEquiment(activeMap, isControl = false, showLayer = true) {
+			return new Promise(resolve => {
+				// 切换监测点图层或工况图层,其中工况和远控是相同设备，卡片详情不一样
+				let markers = this[activeMap];
+				if (this.activeMap !== activeMap) {
+					// 清空聚合
+					this.markers = markers;
+					this._mapContext.addMarkers({
+						markers: markers,
+						clear: true
+					});
+				}
+				if (activeMap === 'monitorList') {
+					this.$refs.mapLayer.show = showLayer;
+				}
+				// 切换
+				this.activeMap = activeMap;
+				// 判断是否是远控
+				this.isControl = isControl;
+				resolve();
+			});
+		},
+		handleChangeEquiment(item) {
+			// 切换工况图层
+			const isTure = this.currentEquiment.includes(item.name);
+			if (isTure) this.currentEquiment = this.currentEquiment.filter(v => v !== item.name);
+			else this.currentEquiment.push(item.name);
+			// 图层显示隐藏
+			this.handleChangeLayer('currentEquiment', this.currentEquiment, 'equimentList');
+		},
+		handleChangeLayer(layerName = 'currentLayer', selected = [], listName = 'monitorList') {
+			// 监测点或工况已选图层
+			this[layerName] = selected;
+			// 重新聚合，显示隐藏点标记
+			const markers = uni.$u.deepClone(this[listName]).filter(v => selected.includes(v.markerType));
+			this._mapContext.addMarkers({
+				markers: markers,
+				clear: true
+			});
+			this.markers = markers;
+			this.initMapContext();
+		},
+		goToPages(type = 'list') {
+			// 导航跳转新页面
+			let url = type;
+			if (type === 'list') {
+				// 跳转到监测点列表、工况列表
+				url = this.activeMap === 'monitorList' ? 'list-monitoring' : this.isControl ? 'list-control' : 'list-equiment';
+			}
+			// 跳转
+			uni.navigateTo({
+				url: asyncRouteMap[url]
+			});
+		},
+		position() {
+			// 定位到当前位置（手机GPS定位）
+			this.showLoading = true;
+			gaoDeJs
+				.getPosition()
+				.then(res => {
+					const { longitude, latitude } = res;
+					this.longitude = longitude;
+					this.latitude = latitude;
+				})
+				.catch(() => {
+					this.$refs.uToast.show({
+						type: 'error',
+						message: '请开启GPS定位功能'
+					});
+				})
+				.finally(() => {
+					this.showLoading = false;
+				});
+		},
+		handleMap(e) {
+			// 点击标记点显示卡片信息
+			this.showSwiperDetail = true;
+			this.scale = 18;
+			const markerId = e.detail.markerId;
+			this.currentMarkerId = markerId;
+		},
+		initMapContext() {
+			// 自定义点聚合
+			this._mapContext.initMarkerCluster({
+				enableDefaultStyle: false,
+				zoomOnClick: true,
+				gridSize: 50
+			});
+			// 缩放或拖动导致新的聚合簇产生时触发，仅返回新创建的聚合簇信息。
+			this._mapContext.on('markerClusterCreate', e => {
+				let clusterMarkers = [];
+				const clusters = e.clusters; // 新产生的聚合簇
+				clusters.forEach((cluster, index) => {
+					const {
+						center, // 聚合点的经纬度数组
+						clusterId, // 聚合簇id
+						markerIds // 已经聚合了的标记点id数组
+					} = cluster;
+
+					let clusterObj = {
+						clusterId,
+						...center,
+						width: 0,
+						height: 0,
+						iconPath: '',
+						label: {
+							// 定制聚合簇样式
+							content: markerIds.length + '',
+							fontSize: markerIds.length >= 100 ? 12 : 16,
+							color: '#fff',
+							width: 40,
+							height: 40,
+							bgColor: '#05BB80',
+							borderRadius: 25,
+							textAlign: 'center',
+							borderWidth: 5,
+							borderColor: '#05BB80'
+						}
+					};
+					clusterMarkers.push(clusterObj);
+				});
+				// 添加聚合簇
+				this._mapContext.addMarkers({
+					markers: clusterMarkers,
+					clear: false //是否先清空地图上所有的marker
+				});
+			});
+		}
+	}
+};
+</script>
+
+<style lang="scss" scoped>
+.work-space {
+	width: 750rpx;
+	flex: 1;
+	/* #ifdef H5 */
+	height: 100%;
+	/* #endif */
+
+	.gao-de-map {
+		flex: 1;
+		width: 750rpx;
+		position: relative;
+	}
+
+	.tool-bar {
+		position: absolute;
+		right: 25rpx;
+		top: 30rpx;
+		z-index: 100;
+
+		.tool-bar-base,
+		.tool-bar-data {
+			width: 70rpx;
+			padding: 15rpx 10rpx;
+			background-color: #fff;
+			border-radius: 6rpx;
+			box-shadow: 0rpx 2rpx 8rpx 0rpx rgba(2, 29, 55, 0.4);
+
+			.base {
+				align-items: center;
+			}
+		}
+
+		.tool-bar-data {
+			margin-top: 19rpx;
+		}
+	}
+
+	.equiment-content {
+		position: absolute;
+		left: 25rpx;
+		top: 30rpx;
+		z-index: 100;
+		padding: 10rpx 5rpx;
+		background-color: #fff;
+		box-shadow: 0rpx 2rpx 8rpx 0rpx rgba(2, 29, 55, 0.4);
+		border-radius: 6rpx;
+
+		.equiment-item {
+			align-items: center;
+		}
+	}
+}
+</style>

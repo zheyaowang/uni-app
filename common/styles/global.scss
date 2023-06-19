@@ -1,0 +1,70 @@
+/* #ifndef APP-NVUE */
+@import "./mixin.scss";
+// 超过指定行数显示省略号，最多5行
+@for $i from 1 through 5 {
+	.seck-line-#{$i} {
+		/* #ifdef APP-NVUE */
+		// nvue下，可以直接使用lines属性，这是weex特有样式
+		lines: $i;
+		text-overflow: ellipsis;
+		overflow: hidden;
+		flex: 1;
+		/* #endif */
+
+		/* #ifndef APP-NVUE */
+		// vue下，单行和多行显示省略号需要单独处理
+		@if $i == '1' {
+			overflow: hidden;
+			white-space: nowrap;
+			text-overflow: ellipsis;
+		} @else {
+			display: -webkit-box!important;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			word-break: break-all;
+			-webkit-line-clamp: $i;
+			-webkit-box-orient: vertical!important;
+		}
+		/* #endif */
+	}
+}
+// 隐藏scroll-view的滚动条
+::-webkit-scrollbar {
+    display: none;
+    width: 0 !important;
+    height: 0 !important;
+    -webkit-appearance: none;
+    background: transparent;
+}
+// tabbar对应组件的高度
+.seck-tabbar-container {
+	height: calc(100% - 50px);
+	position: relative;
+	padding: 0 10rpx;
+}
+// 二级页面最外面的盒子
+.seck-container {
+	height: 100%;
+	width: 100%;
+	@include flex(column);
+}
+// 不带tabbar二级页面的高度（只有navbar+content）
+.seck-subpage-container {
+	@include flex(column);
+	position: relative;
+	padding: 0 10rpx;
+}
+// 一般用于父盒子样式
+.seck-content {
+	flex: 1;
+	height: 0;
+	overflow: hidden;
+}
+
+// popup上边圆角样式
+.u-slide-up-enter-active {
+	overflow: hidden;
+	border-top-left-radius: 20rpx;
+	border-top-right-radius: 20rpx;
+}
+/* #endif */

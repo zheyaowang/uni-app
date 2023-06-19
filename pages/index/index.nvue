@@ -1,0 +1,62 @@
+<template>
+	<!-- 已废弃，使用系统自带tabbar，原因：来回快速切换tabbar多次，地图会崩溃 -->
+	<view class="app-container">
+		<view class="app-container__content">
+			<!-- #ifdef APP-PLUS -->
+			<component :is="currentValue"></component>
+			<!-- #endif -->
+			<!-- #ifdef H5-->
+			<keep-alive><component :is="currentValue"></component></keep-alive>
+			<!-- #endif -->
+		</view>
+		<!-- placeholder => fixed定位固定在底部时，是否生成一个等高元素防止塌陷 -->
+		<view class="">
+			<u-tabbar :value="currentValue" @change="name => (currentValue = name)" placeholder activeColor="#2EA4FE" inactiveColor="#666666">
+				<u-tabbar-item text="工作台" name="workSpace">
+					<u--image width="38rpx" height="42rpx" slot="inactive-icon" src="/static/img/index/workSpace2.png"></u--image>
+					<u--image width="38rpx" height="42rpx" slot="active-icon" src="/static/img/index/workSpace.png"></u--image>
+				</u-tabbar-item>
+				<u-tabbar-item text="水肥药" name="waterFertilizer">
+					<u--image width="38rpx" height="42rpx" slot="inactive-icon" src="/static/img/index/waterFertilizer2.png"></u--image>
+					<u--image width="38rpx" height="42rpx" slot="active-icon" src="/static/img/index/waterFertilizer.png"></u--image>
+				</u-tabbar-item>
+				<u-tabbar-item text="农事" name="farmWork">
+					<u--image width="38rpx" height="42rpx" slot="inactive-icon" src="/static/img/index/farmWork2.png"></u--image>
+					<u--image width="38rpx" height="42rpx" slot="active-icon" src="/static/img/index/farmWork.png"></u--image>
+				</u-tabbar-item>
+				<u-tabbar-item text="我的" name="my">
+					<u--image width="38rpx" height="42rpx" slot="inactive-icon" src="/static/img/index/my2.png"></u--image>
+					<u--image width="38rpx" height="42rpx" slot="active-icon" src="/static/img/index/my.png"></u--image>
+				</u-tabbar-item>
+			</u-tabbar>
+		</view>
+	</view>
+</template>
+
+<script>
+import workSpace from '@/pages/work-space/index.nvue';
+import waterFertilizer from '@/pages/water-fertilizer/index.vue';
+import farmWork from '@/pages/farm-work/index.vue';
+import my from '@/pages/my/index.vue';
+export default {
+	data() {
+		return {
+			currentValue: 'workSpace'
+		};
+	},
+	components: { workSpace, waterFertilizer, farmWork, my },
+	onLoad() {},
+	methods: {}
+};
+</script>
+
+<style scoped lang="scss">
+.app-container {
+	flex: 1;
+	height: 100%;
+
+	&__content {
+		flex: 1;
+	}
+}
+</style>

@@ -1,0 +1,384 @@
+<template>
+	<view class="map-swiper-detail" @tap.stop>
+		<swiper class="map-swiper-detail__swiper" :autoplay="false" :current-item-id="`markerId_${currentId}`" duration="500" @change="onchange">
+			<swiper-item v-for="item of markers" :key="item.id" :item-id="`markerId_${item.id}`" @tap.stop="e => goToPages(e, item)">
+				<!-- ---------监测点卡片 ---------------->
+				<view class="item-swiper" v-if="layers.includes(item.markerType)">
+					<view class="item-swiper__icon"><u--image width="90rpx" height="90rpx" :src="`/static/img/work-space/detail/${item.markerType}.png`"></u--image></view>
+					<view class="item-swiper__content">
+						<view class="item-swiper__content-title">
+							<view class="title">
+								<u--image width="30rpx" height="30rpx" src="/static/img/work-space/detail/icon.png"></u--image>
+								<u--text color="#333" margin="0 20rpx" bold customStyle="fontSize: 32rpx" :text="item.markerName"></u--text>
+							</view>
+							<view class="location-box" @tap.stop="e => navigation(e, item)">
+								<u-icon name="/static/img/work-space/detail/location.png" size="40rpx"></u-icon>
+								<!-- <u--image width="30rpx" height="30rpx" src="/static/img/work-space/detail/location.png"></u--image> -->
+							</view>
+						</view>
+						<!-- 稻田水位 -->
+						<view class="item-swiper__content-content" v-if="item.markerType === 'paddyField'">
+							<view class="info">
+								<view><u--text color="#999" customStyle="fontSize: 26rpx" text="当前水位："></u--text></view>
+								<u--text color="#333" customStyle="fontSize: 26rpx" :text="`${item.attrbuites.z || ' -- '}m`"></u--text>
+							</view>
+							<view class="row">
+								<view class="info">
+									<view><u--text color="#999" customStyle="fontSize: 26rpx" text="水位上限："></u--text></view>
+									<u--text color="#333" customStyle="fontSize: 26rpx" :text="`${item.attrbuites.upper || ' -- '}m`"></u--text>
+								</view>
+								<view class="info">
+									<view><u--text color="#999" customStyle="fontSize: 26rpx" text="水位下限："></u--text></view>
+									<u--text color="#333" customStyle="fontSize: 26rpx" :text="`${item.attrbuites.lower || ' -- '}m`"></u--text>
+								</view>
+							</view>
+						</view>
+						<!-- 流量监测 -->
+						<view class="item-swiper__content-content" v-if="item.markerType === 'flowMonitoring'">
+							<view class="info">
+								<view><u--text color="#999" customStyle="fontSize: 26rpx" text="瞬时流量："></u--text></view>
+								<u--text color="#333" customStyle="fontSize: 26rpx" :text="`${item.attrbuites.q || ' -- '}m³/s`"></u--text>
+							</view>
+							<view class="info">
+								<view><u--text color="#999" customStyle="fontSize: 26rpx" text="累计流量："></u--text></view>
+								<u--text color="#333" customStyle="fontSize: 26rpx" :text="`${item.attrbuites.qa || ' -- '}m³`"></u--text>
+							</view>
+						</view>
+
+						<!-- 作物长势 -->
+						<view class="item-swiper__content-content" v-if="item.markerType === 'cropGrowth'">
+							<view class="info">
+								<view><u--text color="#999" customStyle="fontSize: 26rpx" text="透光度："></u--text></view>
+								<u--text color="#333" customStyle="fontSize: 26rpx" :text="`${item.attrbuites.leafLightTransmittance || ' -- '}`"></u--text>
+							</view>
+							<view class="info">
+								<view><u--text color="#999" customStyle="fontSize: 26rpx" text="生长进度："></u--text></view>
+								<u--text color="#333" customStyle="fontSize: 26rpx" :text="`${item.attrbuites.stageName || ' -- '}`"></u--text>
+							</view>
+						</view>
+
+						<!-- 土壤墒情 -->
+						<view class="item-swiper__content-content" v-if="item.markerType === 'soil'">
+							<view class="row">
+								<view class="info">
+									<view><u--text color="#999" customStyle="fontSize: 26rpx" text="温度："></u--text></view>
+									<u--text color="#333" customStyle="fontSize: 26rpx" :text="`${item.attrbuites.temp00 || ' -- '}`"></u--text>
+								</view>
+								<view class="info">
+									<view><u--text color="#999" customStyle="fontSize: 26rpx" text="盐度："></u--text></view>
+									<u--text color="#333" customStyle="fontSize: 26rpx" :text="`${item.attrbuites.salinity || ' -- '}`"></u--text>
+								</view>
+							</view>
+							<view class="info">
+								<view><u--text color="#999" customStyle="fontSize: 26rpx" text="湿度："></u--text></view>
+								<u--text color="#333" customStyle="fontSize: 26rpx" :text="`${item.attrbuites.mc10 || ' -- '}`"></u--text>
+							</view>
+							<view class="info">
+								<view><u--text color="#999" customStyle="fontSize: 26rpx" text="地表距离："></u--text></view>
+								<u--text color="#333" customStyle="fontSize: 26rpx" text="-0.1m"></u--text>
+							</view>
+						</view>
+
+						<!-- 视频监控 -->
+						<view class="item-swiper__content-content" v-if="item.markerType === 'videosurveillance'">
+							<view class="info">
+								<view><u--text color="#999" customStyle="fontSize: 26rpx" text="状态："></u--text></view>
+								<u--text color="#333" customStyle="fontSize: 26rpx" :text="`${item.attrbuites.videostateenumid || ' -- '}`"></u--text>
+							</view>
+							<view class="info">
+								<view><u--text color="#999" customStyle="fontSize: 26rpx" text="ID："></u--text></view>
+								<u--text color="#333" customStyle="fontSize: 26rpx" :text="`${item.attrbuites.videocode || ' -- '}`"></u--text>
+							</view>
+						</view>
+
+						<!-- 田间虫害 -->
+						<view class="item-swiper__content-content" v-if="item.markerType === 'insect'">
+							<view class="info">
+								<view><u--text color="#999" customStyle="fontSize: 26rpx" text="分析结果："></u--text></view>
+								<u--text color="#333" customStyle="fontSize: 26rpx" :text="`${item.attrbuites.rt ? item.attrbuites.rt.analysisResults : ' -- '}`"></u--text>
+							</view>
+							<view class="info">
+								<view><u--text color="#999" customStyle="fontSize: 26rpx" text="处理结果："></u--text></view>
+								<u--text color="#333" customStyle="fontSize: 26rpx" :text="`${item.attrbuites.rt ? item.attrbuites.rt.handleResults : ' -- '}`"></u--text>
+							</view>
+						</view>
+
+						<!-- 输水管压力 -->
+						<view class="item-swiper__content-content" v-if="item.markerType === 'pipepressure'">
+							<view class="info">
+								<view><u--text color="#999" customStyle="fontSize: 26rpx" text="压力："></u--text></view>
+								<u--text color="#333" customStyle="fontSize: 26rpx" :text="`${item.attrbuites.pressValue || ' -- '}兆帕`"></u--text>
+							</view>
+							<view class="info">
+								<view><u--text color="#999" customStyle="fontSize: 26rpx" text="预警值："></u--text></view>
+								<u--text color="#333" customStyle="fontSize: 26rpx" :text="`${item.attrbuites.warnValue || ' -- '}兆帕`"></u--text>
+							</view>
+						</view>
+
+						<!-- 气象监测 -->
+						<view class="item-swiper__content-content" v-if="item.markerType === 'weatherwatches'">
+							<view class="row">
+								<view class="info">
+									<view><u--text color="#999" customStyle="fontSize: 26rpx" text="温度："></u--text></view>
+									<u--text color="#333" customStyle="fontSize: 26rpx" :text="`${item.attrbuites.rt ? item.attrbuites.rt.temperature : ' -- '}`"></u--text>
+								</view>
+								<!-- 	<view class="info">
+									<view><u--text color="#999" customStyle="fontSize: 26rpx" text="天气："></u--text></view>
+									<u--text color="#333" customStyle="fontSize: 26rpx" :text="`${item.attrbuites.rt ? item.attrbuites.rt.handleResults : ' -- '}`"></u--text>
+								</view> -->
+							</view>
+							<view class="row">
+								<view class="info">
+									<view><u--text color="#999" customStyle="fontSize: 26rpx" text="湿度："></u--text></view>
+									<u--text color="#333" customStyle="fontSize: 26rpx" :text="`${item.attrbuites.rt ? item.attrbuites.rt.humidity : ' -- '}`"></u--text>
+								</view>
+								<view class="info">
+									<view><u--text color="#999" customStyle="fontSize: 26rpx" text="风向："></u--text></view>
+									<u--text color="#333" customStyle="fontSize: 26rpx" :text="`${item.attrbuites.rt ? item.attrbuites.rt.windDirection : ' -- '}`"></u--text>
+								</view>
+							</view>
+						</view>
+					</view>
+				</view>
+
+				<!-- ---------工况卡片 ---------------->
+				<view class="item-swiper" v-if="equiments.includes(item.markerType) && !isControl">
+					<view class="item-swiper__icon"><u--image width="90rpx" height="90rpx" :src="`/static/img/work-space/detail/${item.markerType}.png`"></u--image></view>
+					<view class="item-swiper__content">
+						<view class="item-swiper__content-title">
+							<view class="title">
+								<u--image width="30rpx" height="30rpx" src="/static/img/work-space/detail/icon.png"></u--image>
+								<u--text color="#333" margin="0 20rpx" bold customStyle="fontSize: 32rpx" :text="item.markerName"></u--text>
+							</view>
+						</view>
+						<view class="item-swiper__content-content">
+							<view class="row">
+								<view class="info">
+									<view><u--text color="#999" customStyle="fontSize: 26rpx" text="设备编码："></u--text></view>
+									<u--text color="#333" customStyle="fontSize: 26rpx" :text="item.attrbuites.stcd || ' -- '"></u--text>
+								</view>
+								<view class="info">
+									<view><u--text color="#999" customStyle="fontSize: 26rpx" text="负责人："></u--text></view>
+									<u--text color="#333" customStyle="fontSize: 26rpx" :text="item.attrbuites.responsiblePerson || ' -- '"></u--text>
+								</view>
+							</view>
+							<view class="info">
+								<view><u--text color="#999" customStyle="fontSize: 26rpx" text="负责人电话："></u--text></view>
+								<u--text color="#333" customStyle="fontSize: 26rpx" :text="item.attrbuites.responsiblePhoneNumber || ' -- '"></u--text>
+							</view>
+							<view class="info">
+								<view><u--text color="#999" customStyle="fontSize: 26rpx" text="运行工况："></u--text></view>
+								<u-button
+									:type="item.attrbuites.state === '运行' ? 'success' : item.attrbuites.state === '离线' ? 'warning' : 'error'"
+									size="mini"
+									class="custom-style"
+									:text="item.attrbuites.state || ' -- '"
+								></u-button>
+							</view>
+						</view>
+					</view>
+				</view>
+
+				<!-- 远控卡片 远控设置和工况设备是同一个 -->
+				<view class="item-swiper" v-if="equiments.includes(item.markerType) && isControl">
+					<view class="item-swiper__icon"><u--image width="90rpx" height="90rpx" :src="`/static/img/work-space/detail/${item.markerType}.png`"></u--image></view>
+					<view class="item-swiper__content">
+						<view class="item-swiper__content-title">
+							<view class="title">
+								<u--image width="30rpx" height="30rpx" src="/static/img/work-space/detail/icon.png"></u--image>
+								<u--text color="#333" margin="0 20rpx" bold customStyle="fontSize: 32rpx" :text="item.markerName"></u--text>
+							</view>
+						</view>
+						<view class="item-swiper__content-content">
+							<view class="row">
+								<view class="info">
+									<view><u--text color="#999" customStyle="fontSize: 26rpx" text="运行工况："></u--text></view>
+									<u-button
+										:type="item.attrbuites.state === '运行' ? 'success' : item.attrbuites.state === '离线' ? 'warning' : 'error'"
+										size="mini"
+										class="custom-style"
+										:text="item.attrbuites.state || ' -- '"
+									></u-button>
+								</view>
+								<view class="info">
+									<view><u--text color="#999" customStyle="fontSize: 26rpx" text="控制方式："></u--text></view>
+									<u-switch v-model="value" show-label :labelList="['自动', '手动']" :size="20" activeColor="#2EA3FC"></u-switch>
+								</view>
+							</view>
+							<view class="row">
+								<u-button shape="circle" size="mini" color="#b5b5b4" class="equipment-style" text="点击开机"></u-button>
+								<u-button shape="circle" size="mini" color="linear-gradient(to right, #62BFF6, #526BCA)" class="equipment-style" text="点击关机"></u-button>
+							</view>
+						</view>
+					</view>
+				</view>
+			</swiper-item>
+		</swiper>
+	</view>
+</template>
+
+<script>
+import { asyncRouteMap } from '@/common/router/modules/routers.js';
+import { mapEquimentOptions, mapLayerOptions } from '../data.js';
+import { gomapApp } from '@/common/util/mapTools.js';
+export default {
+	props: {
+		markers: {
+			type: Array,
+			default: () => []
+		},
+		currentId: {
+			type: [String, Number],
+			defaukt: ''
+		},
+		// 是否是远控设备
+		isControl: Boolean
+	},
+	name: 'map-swiper-detail',
+	data() {
+		return {
+			value: false
+		};
+	},
+	computed: {
+		equiments() {
+			// 工况设备类型
+			return mapEquimentOptions.map(v => v.name);
+		},
+		layers() {
+			// 监测点类型
+			return mapLayerOptions.map(v => v.name);
+		}
+	},
+	methods: {
+		goToPages(e, item) {
+			// 跳转详情页
+			const { attrbuites, detailUrl, markerName: title, markerType } = item;
+			const id = attrbuites.id;
+			let data = { id, title };
+			if(markerType === 'weatherwatches') {
+				const temperature = item.attrbuites.rt ? item.attrbuites.rt.temperature : ' -- '
+				data= { ...data, temperature }
+			}
+			uni.navigateTo({
+				url: asyncRouteMap[detailUrl] + '?data=' +  encodeURIComponent(JSON.stringify(data))
+			});
+			// #ifdef APP-NVUE
+			e.stopPropagation();
+			// #endif
+		},
+		onchange(e) {
+			// 定位
+			// #ifdef APP-PLUS
+			const current = e.detail.current;
+			const { latitude, longitude } = this.markers[current];
+			this.$parent.latitude = latitude;
+			this.$parent.longitude = longitude;
+			// #endif
+		},
+		navigation(e, { longitude, latitude, markerName }) {
+			// 地点导航
+			if (!longitude || !latitude) {
+				this.$refs.uToast.show({
+					type: 'default',
+					message: '经纬度不全，无法导航'
+				});
+				return;
+			}
+			console.log(e, { longitude });
+			gomapApp(latitude, longitude, markerName);
+			// #ifdef APP-NVUE
+			e.stopPropagation();
+			// #endif
+		}
+	}
+};
+</script>
+
+<style lang="scss" scoped>
+.map-swiper-detail {
+	width: 750rpx;
+	position: absolute;
+	bottom: 15rpx;
+	left: 0;
+	flex-direction: row;
+	align-items: center;
+
+	&__swiper {
+		width: 750rpx;
+		height: 230rpx;
+	}
+
+	.item-swiper {
+		width: 710rpx;
+		height: 230rpx;
+		padding: 25rpx 30rpx 30rpx 25rpx;
+		background: #fefefc;
+		box-shadow: 0rpx 3rpx 15rpx 0rpx rgba(8, 26, 89, 0.2);
+		border-radius: 8rpx;
+		flex-direction: row;
+		align-items: center;
+		margin: 0 20rpx;
+
+		&__icon {
+			width: 130rpx;
+			height: 130rpx;
+			margin-right: 30rpx;
+			justify-content: center;
+			align-items: center;
+			background-color: #d1ddff;
+		}
+
+		&__content {
+			flex: 1;
+			position: relative;
+			&-title {
+				.title {
+					flex-direction: row;
+					align-items: center;
+				}
+
+				.location-box {
+					width: 90rpx;
+					height: 90rpx;
+					position: absolute;
+					right: -40rpx;
+					top: 0;
+				}
+			}
+
+			&-content {
+				justify-content: space-around;
+				.info,
+				.row {
+					flex-direction: row;
+					align-items: center;
+				}
+
+				.info {
+					margin-top: 10rpx;
+				}
+
+				.row {
+					justify-content: space-between;
+				}
+
+				.custom-style {
+					width: 72rpx;
+					height: 30rpx;
+					font-size: 20rpx;
+				}
+
+				.equipment-style {
+					width: 200rpx;
+					height: 50rpx;
+					margin-top: 15rpx;
+					color: #fff;
+					box-shadow: 0rpx 0rpx 83rpx 24rpx rgba(0, 0, 0, 0.07);
+					opacity: 0.7;
+				}
+			}
+		}
+	}
+}
+</style>

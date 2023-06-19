@@ -1,0 +1,27 @@
+.pagination-box {
+	margin-top: 10px;
+}
+.table-total {
+	text-align: right;
+	padding: 10px;
+	padding-bottom: 0;
+}
+.g-table-header {
+	position: sticky;
+	top: 0;
+	z-index: 9999 !important;
+}
+.uni-table-tr {
+	background-color: #FFF;
+}
+/deep/ .g-table-fixed-header > .checkbox, /deep/ .g-table-fixed > .checkbox {
+	background-color: inherit;
+	z-index: 9999;
+	position: sticky;
+	left: 0;
+	box-sizing: border-box;
+	width: 40px !important;
+}
+/deep/ .g-table-fixed > .checkbox {
+	z-index: 9998;
+}
